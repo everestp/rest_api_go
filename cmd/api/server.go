@@ -1,12 +1,15 @@
 package main
 
 import (
-	"encoding/json"
+	"crypto/tls"
+
 	"fmt"
-	"io"
+
 	"log"
 	"net/http"
 	"strings"
+
+	 mw "github.com/everestp/rest_api_go/internal/api/middlewares"
 )
 
 // User struct with Uppercase fields (Exported) so the JSON package can see them.
@@ -25,21 +28,40 @@ type User struct {
 
 
 	 func  teacherHandler(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte["Hello Teacher Route"])
+		w.Write([]byte("Hello Teacher Route"))
 	}
 
 	 func  execsHandler(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte["Hello student Route"])
+		w.Write([]byte("Hello student Route"))
 	}
 func main() {
+    cert :="cert.pem"
+	key := "key.pem"
+	port :=":3000"
 
-	http.HandleFunc("/",rootHandler)
-	http.HandleFunc("/teacher",teacherHandler)
-	http.HandleFunc("/student",)
-	http.HandleFunc("/exec", execsHandler)
+	mux := http.NewServeMux()
 
+	mux.HandleFunc("/",rootHandler)
+	mux.HandleFunc("/teacher",teacherHandler)
+	mux.HandleFunc("/student",)
+	mux.HandleFunc("/exec", execsHandler)
+
+
+	  tlsConfig := &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	  }
+
+	  //Create a custom server\
+	  server := &http.Server{
+		Addr: port,
+		Handler: mw.SecurityHeaders(mw.Cors(mux)),
+		TLSConfig: tlsConfig,
+	  }
 	
 	fmt.Println("Server is Running on http://localhost:3000")
-	log.Fatal(http.ListenAndServe(":3000", nil))
+	 err :=server.ListenAndServeTLS(cert, key)
+	 if err != nil{
+		log.Fatalln("Error starting the server",err)
+	 }
 }
 
