@@ -73,25 +73,21 @@ func main() {
 	// Logic Block: Middleware Onion Stacking
 	// We wrap from inside-out. The last wrapper called is the first to execute.
 	// Flow: ResponseTime -> SecurityHeaders -> Cors -> Mux
-	var handler http.Handler = mux
-	handler = mw.Cors(handler)
-	handler = mw.SecurityHeaders(handler)
-	handler = mw.ResponseTimeMiddleware(handler)
+
 
 	// Future Reference: mTLS & TLS Hardening
 	// tls.Config allows us to enforce modern security standards, 
 	// such as disabling outdated TLS 1.0/1.1 versions.
 	tlsConfig := &tls.Config{
-		MinVersion:               tls.VersionTLS12,
-		CurvePreferences:         []tls.CurveID{tls.X25519, tls.CurveP256},
-		PreferServerCipherSuites: true,
+		MinVersion: tls.VersionTLS12,
+		
 	}
 
 	// Logic Block: Server Initialization
 	// Customizing the server allows for timeouts, preventing "Slowloris" attacks.
 	server := &http.Server{
 		Addr:         port,
-		Handler:      handler,
+		Handler:      mw.Compression(mw.ResponseTimeMiddleware(mw.SecurityHeaders(mw.Cors(mux)))),
 		TLSConfig:    tlsConfig,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
