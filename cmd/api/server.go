@@ -46,21 +46,16 @@ func main() {
 		CheckBodyOnlyForContentType: "application/x-www-from-urlencode",
 		Whitelist: []string{"name"},
 	 }
+	 fmt.Println(rl ,hppOptions)
 	// Logic Block: Middleware Onion
 	// The order remains the same: Timing -> Compression -> Security -> CORS -> App
-	finalHandler := mw.Hpp(hppOptions)(rl.Middleware(mw.ResponseTimeMiddleware(
-		mw.Compression(
-			mw.SecurityHeaders(
-				mw.Cors(mux),
-			),
-		),
-	)))
-
+	// secureMux1 := applyMiddlewares(mux, mw.Hpp(hppOptions) ,mw.Compression , mw.SecurityHeaders , mw.ResponseTimeMiddleware , rl.Middleware ,mw.Cors)
+   secureMux := mw.SecurityHeaders(mux)
 	// Logic Block: Server Initialization
 	// We removed the TLSConfig field.
 	server := &http.Server{
 		Addr:         port,
-		Handler:      finalHandler,
+		Handler:      secureMux,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  120 * time.Second,
@@ -76,4 +71,15 @@ func main() {
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("Critical Server Failure: %v", err)
 	}
+}
+
+//Middleware is the  fuction that wraps an http.Handler with additional functionality
+type Middleware func(http.Handler) http.Handler
+
+
+func ApplyMiddlewares(handler http.Handler , middlewares ...Middleware) http.Handler{
+ for _ , middleware := range middlewares{
+	handler = middleware(handler)
+ }
+ return  handler
 }
