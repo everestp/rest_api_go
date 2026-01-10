@@ -40,15 +40,21 @@ func main() {
 	mux.HandleFunc("/", rootHandler)
 	mux.HandleFunc("/teacher/", teacherHandler)
    rl := mw.NewRateLimiter(5, time.Minute)
+     hppOptions := mw.HPPOptions{
+		CheckQuery: true,
+		CheckBody: true,
+		CheckBodyOnlyForContentType: "application/x-www-from-urlencode",
+		Whitelist: []string{"name"},
+	 }
 	// Logic Block: Middleware Onion
 	// The order remains the same: Timing -> Compression -> Security -> CORS -> App
-	finalHandler := rl.Middleware(mw.ResponseTimeMiddleware(
+	finalHandler := mw.Hpp(hppOptions)(rl.Middleware(mw.ResponseTimeMiddleware(
 		mw.Compression(
 			mw.SecurityHeaders(
 				mw.Cors(mux),
 			),
 		),
-	))
+	)))
 
 	// Logic Block: Server Initialization
 	// We removed the TLSConfig field.
