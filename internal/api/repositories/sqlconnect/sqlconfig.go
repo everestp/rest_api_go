@@ -4,10 +4,13 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+
+	"github.com/joho/godotenv"
 )
 
 
 func ConnectDB()(*sql.DB , error){
+	
 	user :=os.Getenv("DB_USER")
 	password :=os.Getenv("DB_PASSWORD")
 	dbname :=os.Getenv("DB_NAME")

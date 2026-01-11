@@ -11,12 +11,17 @@ import (
 	"github.com/everestp/rest_api_go/internal/api/repositories/sqlconnect"
 	"github.com/everestp/rest_api_go/internal/api/router"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/joho/godotenv"
 )
 
 // teacherHandler demonstrates dynamic path parsing.
 
 func main() {
-	 _ ,err := sqlconnect.ConnectDB()
+	err:= godotenv.Load()
+	if err != nil {
+		return 
+	}
+	 _ ,err = sqlconnect.ConnectDB()
 	  if err != nil{
 		// panic(err)
 		fmt.Println("Error ------ ",err)
