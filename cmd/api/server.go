@@ -1,35 +1,25 @@
 package main
 
 import (
+	
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
+
 	"time"
 
 	mw "github.com/everestp/rest_api_go/internal/api/middlewares"
+	 handlers "github.com/everestp/rest_api_go/internal/api/handlers"
 )
 
-// rootHandler manages the base path.
-func rootHandler(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		http.NotFound(w, r)
-		return
-	}
-	w.Write([]byte("Welcome to the Root API (HTTP Mode)"))
-}
+
+
+
+
+
+
 
 // teacherHandler demonstrates dynamic path parsing.
-func teacherHandler(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimPrefix(r.URL.Path, "/teacher/")
-	userID := strings.TrimSuffix(path, "/")
-
-	if userID != "" && userID != "teacher" {
-		fmt.Fprintf(w, "Viewing Teacher Profile: %s", userID)
-		return
-	}
-	w.Write([]byte("General Teacher Directory"))
-}
 
 func main() {
 	// Logic Block: Configuration
@@ -37,8 +27,8 @@ func main() {
 	const port = ":3000"
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", rootHandler)
-	mux.HandleFunc("/teacher/", teacherHandler)
+	mux.HandleFunc("/", handlers.RootHandler)
+	mux.HandleFunc("/teacher/", handlers.TeacherHandler)
    rl := mw.NewRateLimiter(5, time.Minute)
      hppOptions := mw.HPPOptions{
 		CheckQuery: true,
@@ -73,13 +63,3 @@ func main() {
 	}
 }
 
-//Middleware is the  fuction that wraps an http.Handler with additional functionality
-type Middleware func(http.Handler) http.Handler
-
-
-func ApplyMiddlewares(handler http.Handler , middlewares ...Middleware) http.Handler{
- for _ , middleware := range middlewares{
-	handler = middleware(handler)
- }
- return  handler
-}
