@@ -15,5 +15,6 @@ func Router() *http.ServeMux{
 	mux.HandleFunc("/teacher/", handlers.TeacherHandler)
 	mux.HandleFunc("/students/", handlers.StudentHandler)
 	mux.HandleFunc("/execes/", handlers.ExcesHandler)
+	return   mux
 
 }

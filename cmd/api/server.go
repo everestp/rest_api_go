@@ -1,7 +1,6 @@
 package main
 
 import (
-	
 	"fmt"
 	"log"
 	"net/http"
@@ -9,26 +8,25 @@ import (
 	"time"
 
 	mw "github.com/everestp/rest_api_go/internal/api/middlewares"
-	 handlers "github.com/everestp/rest_api_go/internal/api/handlers"
+	"github.com/everestp/rest_api_go/internal/api/repositories/sqlconnect"
+	"github.com/everestp/rest_api_go/internal/api/router"
+	_ "github.com/go-sql-driver/mysql"
 )
-
-
-
-
-
-
-
 
 // teacherHandler demonstrates dynamic path parsing.
 
 func main() {
+	 _ ,err := sqlconnect.ConnectDB()
+	  if err != nil{
+		// panic(err)
+		fmt.Println("Error ------ ",err)
+		return 
+	 }
 	// Logic Block: Configuration
 	// We no longer need certFile or keyFile constants.
 	const port = ":3000"
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", handlers.RootHandler)
-	mux.HandleFunc("/teacher/", handlers.TeacherHandler)
+
    rl := mw.NewRateLimiter(5, time.Minute)
      hppOptions := mw.HPPOptions{
 		CheckQuery: true,
@@ -40,7 +38,7 @@ func main() {
 	// Logic Block: Middleware Onion
 	// The order remains the same: Timing -> Compression -> Security -> CORS -> App
 	// secureMux1 := applyMiddlewares(mux, mw.Hpp(hppOptions) ,mw.Compression , mw.SecurityHeaders , mw.ResponseTimeMiddleware , rl.Middleware ,mw.Cors)
-   secureMux := mw.SecurityHeaders(mux)
+   secureMux := mw.SecurityHeaders(router.Router())
 	// Logic Block: Server Initialization
 	// We removed the TLSConfig field.
 	server := &http.Server{
