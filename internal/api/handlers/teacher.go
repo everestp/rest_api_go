@@ -453,10 +453,88 @@ NextKey:
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(existingTeacher)
 }
+func DeleteTeachersHandler(w http.ResponseWriter , r *http.Request){
+	
+	db, err := sqlconnect.ConnectDB()
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Unable to connect to database", http.StatusInternalServerError)
+		return
+	}
+	defer db.Close()
 
+var ids []int
+	err =json.NewDecoder(r.Body).Decode(&ids)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Invalid Request Payload", http.StatusBadRequest)
+		return
+	}
+
+    tx , err := db.Begin()
+	if err != nil{
+		log.Println(err)
+		http.Error(w, "Error starting the transaction", http.StatusInternalServerError)
+		return
+	}
+	stmt, err := db.Prepare(`
+  (DELETE FORM teacher WHERE id = ?)
+`)
+	if err != nil {
+		fmt.Println("SQL Prepare Error:", err)
+		tx.Rollback()
+		http.Error(w, "Error preparing delete statement", http.StatusInternalServerError)
+		return
+	}
+
+	defer stmt.Close()
+
+  deleteID := []int{}
+  for _ ,id := range ids{
+	result, err := stmt.Exec(id)
+	if err != nil{
+		tx.Rollback()
+		log.Println(err)
+		http.Error(w, "Error deleting the teacher ", http.StatusInternalServerError)
+		return
+	}
+	 rowAffected , err := result.RowsAffected()
+ if err != nil {
+		log.Println(err)
+		tx.Rollback()
+		http.Error(w, "Error  retriving delete result", http.StatusInternalServerError)
+		return
+	}
+	//if  teacher was deleted add the id to the deleted id
+	if rowAffected > 0 {
+		deleteID = append(deleteID, id)
+	}
+
+  }
+	//Commit the  transaction
+	err = tx.Commit()
+	 if err != nil {
+		log.Println(err)
+		tx.Rollback()
+		http.Error(w, "Error commiting transaction", http.StatusInternalServerError)
+		return
+	}
+	if len(deleteID) < 1{
+	http.Error(w, "ID doesnot exist", http.StatusNoContent)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	response := struct{
+		Status string `json:"status"`
+		deletedIDs []int `josn:"deletes_id"`
+	}{
+		Status: "Teacher Delete Sucessfully",
+		deletedIDs: deleteID,
+	}
+	json.NewEncoder(w).Encode(response)
+}
 //DELETE for techer/{id}
 
-func DeleteTeacherHandler(w http.ResponseWriter , r *http.Request){
+func DeleteOneTeacherHandler(w http.ResponseWriter , r *http.Request){
 	idStr := strings.TrimPrefix(r.URL.Path, "/teacher/")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
