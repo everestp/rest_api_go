@@ -33,3 +33,4 @@ go.work.sum
 cmd/api/openssl.cnf
 cmd/api/cert.pem
 cmd/api/key.pem
+internal/api/repositories/sqlconnect/sql

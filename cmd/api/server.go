@@ -29,14 +29,14 @@ func main() {
 	 }
 	// Logic Block: Configuration
 	// We no longer need certFile or keyFile constants.
-	const port = ":3000"
+	const port = ":3001"
 
 
    rl := mw.NewRateLimiter(5, time.Minute)
      hppOptions := mw.HPPOptions{
 		CheckQuery: true,
 		CheckBody: true,
-		CheckBodyOnlyForContentType: "application/x-www-from-urlencode",
+		CheckBodyOnlyForContentType: "application/x-www-form-urlencoded",
 		Whitelist: []string{"name"},
 	 }
 	 fmt.Println(rl ,hppOptions)
