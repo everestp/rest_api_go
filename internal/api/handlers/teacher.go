@@ -56,6 +56,22 @@ func TeacherHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func isValidSortOrder(order string) bool{
+	return  order =="asc" || order =="desc"
+}
+
+func isValidSortFiled(field string) bool{
+	validFiled := map[string]bool{
+		"first_name": true,
+		"last_name":true,
+		"email":true,
+		"level":true,
+		"subject":true,
+	}
+	return  validFiled[field]
+}
+
+
 func getTeachersHandler(w http.ResponseWriter, r *http.Request) {
 	db, err := sqlconnect.ConnectDB()
 	if err != nil {
@@ -70,18 +86,63 @@ func getTeachersHandler(w http.ResponseWriter, r *http.Request) {
 
 	// GET ALL
 	if idStr == "" {
-		firstName := r.URL.Query().Get("first_name")
-		lastName := r.URL.Query().Get("last_name")
+query := "SELECT id, first_name, last_name, email, level, subject FROM teacher WHERE 1=1"
+var args []any
 
-		teacherList := make([]models.Teacher, 0, len(teachers))
+//list all the query params
+query, args = addFilters(r, query, args)
 
-		for _, teacher := range teachers {
-			if (firstName == "" || teacher.FirstNAme == firstName) &&
-				(lastName == "" || teacher.LastName == lastName) {
-				teacherList = append(teacherList, teacher)
-			}
-		}
+//sorting
+sortParams := r.URL.Query()["sortby"]
+//  /teacher?sortby=name:asc&sortby=level:desc
+if len(sortParams) > 0{
+    query += "ORDER BY "
+	for i, param := range sortParams{
+	  parts :=strings.Split(param, ":")
+	  if len(parts) !=2{
+		continue
+	  }
+      field ,order :=parts[0] ,parts[1]
+	  if !isValidSortFiled(field) || isValidSortFiled(order){
+		continue
+	  }
+	  if i > 0 {
+		query += ","
+	  }
+	  query +=" "+ field + " "+ order
 
+
+	}
+}
+ rows , err:= db.Query(query, args...)
+if err != nil {
+	fmt.Println(err)
+		http.Error(w, "Invalid teacher ID", http.StatusInternalServerError)
+		return
+	}
+ defer rows.Close()
+
+teacherList := make([]models.Teacher, 0)
+
+for rows.Next(){
+	var teacher  models.Teacher
+	err :=  rows.Scan(
+		&teacher.ID,
+		&teacher.FirstNAme,
+		&teacher.LastName,
+		&teacher.Email,
+		&teacher.Level,
+		&teacher.Subject,
+	)
+	if err != nil {
+	fmt.Println(err)
+		http.Error(w, "Error scanning databasae", http.StatusInternalServerError)
+		return
+	}
+  teacherList = append(teacherList, teacher)
+}
+
+		
 		response := struct {
 			Status string           `json:"status"`
 			Count  int              `json:"count"`
@@ -128,6 +189,24 @@ func getTeachersHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(teacher)
+}
+
+func addFilters(r *http.Request, query string, args []any) (string, []any) {
+	params := map[string]string{
+		"first_name": "first_name",
+		"last_name":  "last_name",
+		"email":      "email",
+		"level":      "level",
+		"subject":    "subject",
+	}
+	for param, dbField := range params {
+		value := r.URL.Query().Get(param)
+		if value != "" {
+			query += " AND " + dbField + " = ? "
+			args = append(args, value)
+		}
+	}
+	return query, args
 }
 
 func addTeacherHandler(w http.ResponseWriter, r *http.Request) {
