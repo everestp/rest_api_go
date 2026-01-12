@@ -477,9 +477,7 @@ var ids []int
 		http.Error(w, "Error starting the transaction", http.StatusInternalServerError)
 		return
 	}
-	stmt, err := db.Prepare(`
-  (DELETE FORM teacher WHERE id = ?)
-`)
+stmt, err := db.Prepare("DELETE FROM teacher WHERE id = ?")
 	if err != nil {
 		fmt.Println("SQL Prepare Error:", err)
 		tx.Rollback()
@@ -508,6 +506,11 @@ var ids []int
 	//if  teacher was deleted add the id to the deleted id
 	if rowAffected > 0 {
 		deleteID = append(deleteID, id)
+	}
+	if rowAffected < 1 {
+		tx.Rollback()
+
+		return 
 	}
 
   }
