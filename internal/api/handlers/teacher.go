@@ -13,6 +13,7 @@ import (
 
 	"github.com/everestp/rest_api_go/internal/api/models"
 	"github.com/everestp/rest_api_go/internal/api/repositories/sqlconnect"
+	"github.com/everestp/rest_api_go/pkg/utils"
 )
 
 var (
@@ -342,7 +343,7 @@ func UpdateTeacherHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 //Patch for teacher/{id}
-func PatchTeacherHandler(w http.ResponseWriter , r *http.Request ){
+func PatchOneTeacherHandler(w http.ResponseWriter , r *http.Request ){
 	idStr := strings.TrimPrefix(r.URL.Path, "/teacher/")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -452,6 +453,25 @@ NextKey:
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(existingTeacher)
+}
+// PATCH /teachers
+func PatchTeachersHandler(w http.ResponseWriter, r *http.Request) {
+
+	var updates []map[string]interface{}
+	err := json.NewDecoder(r.Body).Decode(&updates)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	err = PatchTeachers(updates)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 func DeleteTeachersHandler(w http.ResponseWriter , r *http.Request){
 	
@@ -584,4 +604,99 @@ fmt.Println(result.RowsAffected())
 		ID: id,
 	}
 	json.NewEncoder(w).Encode(response)
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+func PatchTeachers(updates []map[string]interface{}) error {
+	db, err := sqlconnect.ConnectDB()
+	if err != nil {
+		return utils.ErrorHandler(err, "error updating data")
+	}
+	defer db.Close()
+
+	tx, err := db.Begin()
+	if err != nil {
+		return utils.ErrorHandler(err, "error updating data")
+	}
+
+	for _, update := range updates {
+		idStr, ok := update["id"].(string)
+		if !ok {
+			tx.Rollback()
+			return utils.ErrorHandler(err, "invalid Id")
+		}
+
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			tx.Rollback()
+			return utils.ErrorHandler(err, "invalid Id")
+		}
+
+		var teacherFromDb models.Teacher
+		err = db.QueryRow("SELECT id, first_name, last_name, email, class, subject FROM teachers WHERE id = ?", id).Scan(&teacherFromDb.ID, &teacherFromDb.FirstName, &teacherFromDb.LastName, &teacherFromDb.Email, &teacherFromDb.Level, &teacherFromDb.Subject)
+		if err != nil {
+			log.Println("ID:", id)
+			log.Printf("Type: %T", id)
+			log.Println(err)
+			tx.Rollback()
+			if err == sql.ErrNoRows {
+				return utils.ErrorHandler(err, "Teacher not found")
+			}
+			return utils.ErrorHandler(err, "error updating data")
+		}
+
+		teacherVal := reflect.ValueOf(&teacherFromDb).Elem()
+		teacherType := teacherVal.Type()
+
+		for k, v := range update {
+			if k == "id" {
+				continue // skip updating the ID field
+			}
+			for i := 0; i < teacherVal.NumField(); i++ {
+				field := teacherType.Field(i)
+				if field.Tag.Get("json") == k+",omitempty" {
+					fieldVal := teacherVal.Field(i)
+					if fieldVal.CanSet() {
+						val := reflect.ValueOf(v)
+						if val.Type().ConvertibleTo(fieldVal.Type()) {
+							fieldVal.Set(val.Convert(fieldVal.Type()))
+						} else {
+							tx.Rollback()
+							log.Printf("cannot convert %v to %v", val.Type(), fieldVal.Type())
+							return utils.ErrorHandler(err, "error updating data")
+						}
+					}
+					break
+				}
+			}
+		}
+
+		_, err = tx.Exec("UPDATE teachers SET first_name = ?, last_name = ?, email = ?, class = ?, subject = ? WHERE id = ?", teacherFromDb.FirstName, teacherFromDb.LastName, teacherFromDb.Email, teacherFromDb.Level, teacherFromDb.Subject, teacherFromDb.ID)
+		if err != nil {
+			tx.Rollback()
+			return utils.ErrorHandler(err, "error updating data")
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return utils.ErrorHandler(err, "error updating data")
+	}
+	return nil 
 }
