@@ -43,7 +43,7 @@ func main() {
 	// Logic Block: Middleware Onion
 	// The order remains the same: Timing -> Compression -> Security -> CORS -> App
 	// secureMux1 := applyMiddlewares(mux, mw.Hpp(hppOptions) ,mw.Compression , mw.SecurityHeaders , mw.ResponseTimeMiddleware , rl.Middleware ,mw.Cors)
-   secureMux := mw.SecurityHeaders(router.Router())
+   secureMux := mw.SecurityHeaders(router.MainRouter())
 	// Logic Block: Server Initialization
 	// We removed the TLSConfig field.
 	server := &http.Server{
