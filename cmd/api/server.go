@@ -29,7 +29,7 @@ func main() {
 	 }
 	// Logic Block: Configuration
 	// We no longer need certFile or keyFile constants.
-	const port = ":3001"
+	const port = ":3000"
 
 
    rl := mw.NewRateLimiter(5, time.Minute)

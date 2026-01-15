@@ -1,22 +1,25 @@
 package handlers
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
-	"reflect"
+	
 	"strconv"
 	"strings"
-	
+	"sync"
 
 	"github.com/everestp/rest_api_go/internal/api/models"
 	"github.com/everestp/rest_api_go/internal/api/repositories/sqlconnect"
-	"github.com/everestp/rest_api_go/pkg/utils"
+	
 )
 
-
+var (
+	teachers = make(map[int]models.Teacher)
+	mutex    = &sync.Mutex{}
+	nextID   = 1
+)
 
 // Initialize dummy data
 func init() {
@@ -41,7 +44,7 @@ func init() {
 
 
 
-func GetStudentsHandler(w http.ResponseWriter, r *http.Request) {
+func GetTeachersHandler(w http.ResponseWriter, r *http.Request) {
 	
 
 
@@ -70,7 +73,7 @@ func GetStudentsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 
-func GetOneStudentHandler(w http.ResponseWriter, r *http.Request) {
+func GetOneTeacherHandler(w http.ResponseWriter, r *http.Request) {
 
 
 	
@@ -98,17 +101,17 @@ func GetOneStudentHandler(w http.ResponseWriter, r *http.Request) {
 
 
 
-func AddStudentHandler(w http.ResponseWriter, r *http.Request) {
+func AddTeacherHandler(w http.ResponseWriter, r *http.Request) {
 	
 	defer r.Body.Close()
 
-	var newStudents []models.Student
+	var newTeachers []models.Teacher
 
-	if err := json.NewDecoder(r.Body).Decode(&newStudents); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&newTeachers); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
-	addStudents, err := sqlconnect.AddStudentsDBHandler(newStudents)
+	addedTeachers, err := sqlconnect.AddTeacherDBHandler(newTeachers)
 	if err != nil {
 		log.Println(err)
 		return 
@@ -120,11 +123,11 @@ func AddStudentHandler(w http.ResponseWriter, r *http.Request) {
 	response := struct {
 		Status string           `json:"status"`
 		Count  int              `json:"count"`
-		Data   []models.Student `json:"data"`
+		Data   []models.Teacher `json:"data"`
 	}{
 		Status: "success",
-		Count:  len(addStudents),
-		Data:   addStudents,
+		Count:  len(addedTeachers),
+		Data:   addedTeachers,
 	}
 
 	json.NewEncoder(w).Encode(response)
@@ -133,7 +136,7 @@ func AddStudentHandler(w http.ResponseWriter, r *http.Request) {
 
 // PUT for teacher Route /teacher/
 // PUT /teachers/{id}
-func UpdateStudentHandler(w http.ResponseWriter, r *http.Request) {
+func UpdateTeacherHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -165,7 +168,7 @@ func UpdateStudentHandler(w http.ResponseWriter, r *http.Request) {
 
 
 // PATCH /teachers
-func PatchStudentsHandler(w http.ResponseWriter, r *http.Request) {
+func PatchTeachersHandler(w http.ResponseWriter, r *http.Request) {
 
 	var updates []map[string]interface{}
 	err := json.NewDecoder(r.Body).Decode(&updates)
@@ -185,7 +188,7 @@ func PatchStudentsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // PATCH /teachers/{id}
-func PatchOneStudentHandler(w http.ResponseWriter, r *http.Request) {
+func PatchOneTeacherHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -216,7 +219,7 @@ func PatchOneStudentHandler(w http.ResponseWriter, r *http.Request) {
 
 
 
-func DeleteStudentsHandler(w http.ResponseWriter , r *http.Request){
+func DeleteTeachersHandler(w http.ResponseWriter , r *http.Request){
 	
 	db, err := sqlconnect.ConnectDB()
 	if err != nil {
@@ -300,7 +303,7 @@ stmt, err := db.Prepare("DELETE FROM teacher WHERE id = ?")
 }
 //DELETE for techer/{id}
 
-func DeleteOneStudentHandler(w http.ResponseWriter , r *http.Request){
+func DeleteOneTeacherHandler(w http.ResponseWriter , r *http.Request){
 	idStr := strings.TrimPrefix(r.URL.Path, "/teacher/")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -350,96 +353,56 @@ fmt.Println(result.RowsAffected())
 }
 
 
+func GetStudentByTeacherID (w http.ResponseWriter , r *http.Request){
+	teacherID := r.PathValue("id")
+
+	var students []models.Student
+	students, err := GetStudentByTeacherIDFromDB(teacherID, students)
+	if err != nil {
+		return  
+	}
+  response := struct {
+	Status string `json:"status"`
+		Count int `json:"count"`
+			Data []models.Student  `json:"data"`
+	
+
+  }{
+	Status: "sucess",
+	Count: len(students),
+	Data: students,
+}
 
 
+w.Header().Set("Content-Type","application/json")
+json.NewEncoder(w).Encode(response)
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-func PatchTeachers(updates []map[string]interface{}) error {
+func GetStudentByTeacherIDFromDB(teacherID string, students []models.Student) ([]models.Student, error) {
 	db, err := sqlconnect.ConnectDB()
 	if err != nil {
-		return utils.ErrorHandler(err, "error updating data")
+		log.Println(err)
+		return nil, err
 	}
 	defer db.Close()
 
-	tx, err := db.Begin()
+	query := `SELECT id ,first_name ,last_name , email ,level FROM students WHERE level = (SELECT level FROM teacher WHERE id = ?)`
+	rows, err := db.Query(query, teacherID)
+	defer rows.Close()
+	for rows.Next() {
+		var student models.Student
+		err = rows.Scan(&student.ID, &student.FirstName, &student.LastName, &student.Email, &student.Level)
+		if err != nil {
+			return nil, err
+		}
+
+		students = append(students, student)
+	}
+	err = rows.Err()
 	if err != nil {
-		return utils.ErrorHandler(err, "error updating data")
+		log.Println(err)
+		return nil, err
 	}
-
-	for _, update := range updates {
-		idStr, ok := update["id"].(string)
-		if !ok {
-			tx.Rollback()
-			return utils.ErrorHandler(err, "invalid Id")
-		}
-
-		id, err := strconv.Atoi(idStr)
-		if err != nil {
-			tx.Rollback()
-			return utils.ErrorHandler(err, "invalid Id")
-		}
-
-		var teacherFromDb models.Teacher
-		err = db.QueryRow("SELECT id, first_name, last_name, email, class, subject FROM teachers WHERE id = ?", id).Scan(&teacherFromDb.ID, &teacherFromDb.FirstName, &teacherFromDb.LastName, &teacherFromDb.Email, &teacherFromDb.Level, &teacherFromDb.Subject)
-		if err != nil {
-			log.Println("ID:", id)
-			log.Printf("Type: %T", id)
-			log.Println(err)
-			tx.Rollback()
-			if err == sql.ErrNoRows {
-				return utils.ErrorHandler(err, "Teacher not found")
-			}
-			return utils.ErrorHandler(err, "error updating data")
-		}
-
-		teacherVal := reflect.ValueOf(&teacherFromDb).Elem()
-		teacherType := teacherVal.Type()
-
-		for k, v := range update {
-			if k == "id" {
-				continue // skip updating the ID field
-			}
-			for i := 0; i < teacherVal.NumField(); i++ {
-				field := teacherType.Field(i)
-				if field.Tag.Get("json") == k+",omitempty" {
-					fieldVal := teacherVal.Field(i)
-					if fieldVal.CanSet() {
-						val := reflect.ValueOf(v)
-						if val.Type().ConvertibleTo(fieldVal.Type()) {
-							fieldVal.Set(val.Convert(fieldVal.Type()))
-						} else {
-							tx.Rollback()
-							log.Printf("cannot convert %v to %v", val.Type(), fieldVal.Type())
-							return utils.ErrorHandler(err, "error updating data")
-						}
-					}
-					break
-				}
-			}
-		}
-
-		_, err = tx.Exec("UPDATE teachers SET first_name = ?, last_name = ?, email = ?, class = ?, subject = ? WHERE id = ?", teacherFromDb.FirstName, teacherFromDb.LastName, teacherFromDb.Email, teacherFromDb.Level, teacherFromDb.Subject, teacherFromDb.ID)
-		if err != nil {
-			tx.Rollback()
-			return utils.ErrorHandler(err, "error updating data")
-		}
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return utils.ErrorHandler(err, "error updating data")
-	}
-	return nil 
+	return students, nil
 }
+
