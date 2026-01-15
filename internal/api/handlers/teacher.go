@@ -357,7 +357,7 @@ func GetStudentByTeacherID (w http.ResponseWriter , r *http.Request){
 	teacherID := r.PathValue("id")
 
 	var students []models.Student
-	students, err := GetStudentByTeacherIDFromDB(teacherID, students)
+	students, err := sqlconnect.GetStudentByTeacherIDFromDB(teacherID, students)
 	if err != nil {
 		return  
 	}
@@ -378,31 +378,31 @@ w.Header().Set("Content-Type","application/json")
 json.NewEncoder(w).Encode(response)
 }
 
-func GetStudentByTeacherIDFromDB(teacherID string, students []models.Student) ([]models.Student, error) {
-	db, err := sqlconnect.ConnectDB()
-	if err != nil {
-		log.Println(err)
-		return nil, err
-	}
-	defer db.Close()
+func GetStudentCountByTeacherID (w http.ResponseWriter , r *http.Request){
+teacherID := r.PathValue("id")
 
-	query := `SELECT id ,first_name ,last_name , email ,level FROM students WHERE level = (SELECT level FROM teacher WHERE id = ?)`
-	rows, err := db.Query(query, teacherID)
-	defer rows.Close()
-	for rows.Next() {
-		var student models.Student
-		err = rows.Scan(&student.ID, &student.FirstName, &student.LastName, &student.Email, &student.Level)
-		if err != nil {
-			return nil, err
-		}
-
-		students = append(students, student)
-	}
-	err = rows.Err()
+	studentCount , err  := sqlconnect.GetStudentCountByTeacherIDFromDB(teacherID)
 	if err != nil {
-		log.Println(err)
-		return nil, err
+		return
 	}
-	return students, nil
+	  response := struct {
+	Status string `json:"status"`
+		Count int `json:"count"`
+	
+	
+
+  }{
+	Status: "sucess",
+	Count: studentCount,
+	
 }
+
+
+w.Header().Set("Content-Type","application/json")
+json.NewEncoder(w).Encode(response)
+
+	
+}
+
+
 

@@ -326,3 +326,50 @@ func AddTeacherDBHandler( newTeachers []models.Teacher) ([]models.Teacher, error
 	return addedTeachers, nil
 }
 
+func GetStudentCountByTeacherIDFromDB(teacherID string) (int ,error) {
+	db, err := ConnectDB()
+	if err != nil {
+		log.Println(err)
+		return 0 , err
+	}
+	defer db.Close()
+
+	var studentCount int
+	query := `SELECT COUNT(*) FROM students WHERE level = (SELECT level FROM teacher WHERE id = ?)`
+	err = db.QueryRow(query, teacherID).Scan(&studentCount)
+	if err != nil {
+		return 0 , utils.ErrorHandler(err , "error retriveing data")
+	}
+	return studentCount , nil
+}
+
+func GetStudentByTeacherIDFromDB(teacherID string, students []models.Student) ([]models.Student, error) {
+	db, err := ConnectDB()
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	defer db.Close()
+
+	query := `SELECT id ,first_name ,last_name , email ,level FROM students WHERE level = (SELECT level FROM teacher WHERE id = ?)`
+	rows, err := db.Query(query, teacherID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var student models.Student
+		err = rows.Scan(&student.ID, &student.FirstName, &student.LastName, &student.Email, &student.Level)
+		if err != nil {
+			return nil, err
+		}
+
+		students = append(students, student)
+	}
+	err = rows.Err()
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	return students, nil
+}
