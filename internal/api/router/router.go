@@ -25,7 +25,7 @@ func Router() *http.ServeMux {
 	mux.HandleFunc("DELETE /teacher/{id}", handlers.DeleteOneTeacherHandler)
 
 	// Student endpoints
-	mux.HandleFunc("/students/", handlers.StudentHandler)
+	// mux.HandleFunc("/students/", handlers.StudentHandler)
 
 	// Exercise endpoints
 	mux.HandleFunc("/execes/", handlers.ExcesHandler)

@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"reflect"
 	"strconv"
-	"strings"
+	
 
 	"github.com/everestp/rest_api_go/internal/api/models"
 	"github.com/everestp/rest_api_go/pkg/utils"
@@ -25,10 +25,10 @@ func GetTeacherDBHandler( teachers []models.Teacher, r *http.Request) ([]models.
 		var args []any
 
 		// Add filters
-		query, args = addFilters(r, query, args)
+		query, args = utils.AddFilters(r, query, args)
 
 		// Add sorting
-		query = addSorting(r, query)
+		query = utils.AddSorting(r, query)
 
 	rows, err := db.Query(query, args...)
 	if err != nil {
@@ -261,46 +261,7 @@ func DeleteOneTeacher(id int) error {
 }
 
 
-func addSorting(r *http.Request, query string) string {
-	sortParams := r.URL.Query()["sortby"]
-	// /teacher?sortby=name:asc&sortby=level:desc
-	if len(sortParams) > 0 {
-		query += " ORDER BY"
-		for i, param := range sortParams {
-			parts := strings.Split(param, ":")
-			if len(parts) != 2 {
-				continue
-			}
-			field, order := parts[0], parts[1]
-			if !isValidSortOrder(order) || !isValidSortField(field) {
-				continue
-			}
-			if i > 0 {
-				query += ","
-			}
-			query += " " + field + " " + strings.ToUpper(order)
-		}
-	}
-	return query
-}
 
-func addFilters(r *http.Request, query string, args []any) (string, []any) {
-	params := map[string]string{
-		"first_name": "first_name",
-		"last_name":  "last_name",
-		"email":      "email",
-		"level":      "level",
-		"subject":    "subject",
-	}
-	for param, dbField := range params {
-		value := r.URL.Query().Get(param)
-		if value != "" {
-			query += " AND " + dbField + " = ? "
-			args = append(args, value)
-		}
-	}
-	return query, args
-}
 
 func isValidSortOrder(order string) bool {
 	return order == "asc" || order == "desc"
@@ -365,41 +326,3 @@ func AddTeacherDBHandler( newTeachers []models.Teacher) ([]models.Teacher, error
 	return addedTeachers, nil
 }
 
-
-
-func generateInsertQuery(model any) string{
-	modelType := reflect.TypeOf(model)
-	var columns ,placeholder string
-	for i := 0; i < modelType.NumField(); i++ {
-		dbTags := modelType.Field(i).Tag.Get("db")
-		fmt.Println("dbtag:",dbTags)
-		dbTags = strings.TrimSuffix(dbTags, ",omitempty")
-		if dbTags != "" &&dbTags !="id"{ //skip the ID field if it"s auto increament
-			continue
-		}
-
-		if columns != ""{
-			columns += ", "
-			placeholder += "?"
-		}
-columns +=dbTags
-placeholder +="?"
-	}
-
-	return  fmt.Sprintf("INSERT INTO teacher (%s) VALUES (%s)", columns ,placeholder)
-}
-
-func getStructValues(model any)[]any {
-	modelValue := reflect.ValueOf(model)
-	modelType := modelValue.Type()
-	values :=[]any{}
-	for i := 0; i < modelType.NumField(); i++ {
-		dbTag := modelType.Field(i).Tag.Get("db")
-		if dbTag != "" &&dbTag !="id,omitempty"{
-			values = append(values, modelValue.Field(i).Interface())
-		}
-		
-	}
-	log.Println("Values = ",values)
-	return  values
-}

@@ -9,18 +9,14 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"sync"
+	
 
 	"github.com/everestp/rest_api_go/internal/api/models"
 	"github.com/everestp/rest_api_go/internal/api/repositories/sqlconnect"
 	"github.com/everestp/rest_api_go/pkg/utils"
 )
 
-var (
-	teachers = make(map[int]models.Teacher)
-	mutex    = &sync.Mutex{}
-	nextID   = 1
-)
+
 
 // Initialize dummy data
 func init() {
@@ -45,7 +41,7 @@ func init() {
 
 
 
-func GetTeachersHandler(w http.ResponseWriter, r *http.Request) {
+func GetStudentsHandler(w http.ResponseWriter, r *http.Request) {
 	
 
 
@@ -74,7 +70,7 @@ func GetTeachersHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 
-func GetOneTeacherHandler(w http.ResponseWriter, r *http.Request) {
+func GetOneStudentHandler(w http.ResponseWriter, r *http.Request) {
 
 
 	
@@ -102,17 +98,17 @@ func GetOneTeacherHandler(w http.ResponseWriter, r *http.Request) {
 
 
 
-func AddTeacherHandler(w http.ResponseWriter, r *http.Request) {
+func AddStudentHandler(w http.ResponseWriter, r *http.Request) {
 	
 	defer r.Body.Close()
 
-	var newTeachers []models.Teacher
+	var newStudents []models.Student
 
-	if err := json.NewDecoder(r.Body).Decode(&newTeachers); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&newStudents); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
-	addedTeachers, err := sqlconnect.AddTeacherDBHandler(newTeachers)
+	addStudents, err := sqlconnect.AddStudentsDBHandler(newStudents)
 	if err != nil {
 		log.Println(err)
 		return 
@@ -124,11 +120,11 @@ func AddTeacherHandler(w http.ResponseWriter, r *http.Request) {
 	response := struct {
 		Status string           `json:"status"`
 		Count  int              `json:"count"`
-		Data   []models.Teacher `json:"data"`
+		Data   []models.Student `json:"data"`
 	}{
 		Status: "success",
-		Count:  len(addedTeachers),
-		Data:   addedTeachers,
+		Count:  len(addStudents),
+		Data:   addStudents,
 	}
 
 	json.NewEncoder(w).Encode(response)
@@ -137,7 +133,7 @@ func AddTeacherHandler(w http.ResponseWriter, r *http.Request) {
 
 // PUT for teacher Route /teacher/
 // PUT /teachers/{id}
-func UpdateTeacherHandler(w http.ResponseWriter, r *http.Request) {
+func UpdateStudentHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -169,7 +165,7 @@ func UpdateTeacherHandler(w http.ResponseWriter, r *http.Request) {
 
 
 // PATCH /teachers
-func PatchTeachersHandler(w http.ResponseWriter, r *http.Request) {
+func PatchStudentsHandler(w http.ResponseWriter, r *http.Request) {
 
 	var updates []map[string]interface{}
 	err := json.NewDecoder(r.Body).Decode(&updates)
@@ -189,7 +185,7 @@ func PatchTeachersHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // PATCH /teachers/{id}
-func PatchOneTeacherHandler(w http.ResponseWriter, r *http.Request) {
+func PatchOneStudentHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -220,7 +216,7 @@ func PatchOneTeacherHandler(w http.ResponseWriter, r *http.Request) {
 
 
 
-func DeleteTeachersHandler(w http.ResponseWriter , r *http.Request){
+func DeleteStudentsHandler(w http.ResponseWriter , r *http.Request){
 	
 	db, err := sqlconnect.ConnectDB()
 	if err != nil {
@@ -304,7 +300,7 @@ stmt, err := db.Prepare("DELETE FROM teacher WHERE id = ?")
 }
 //DELETE for techer/{id}
 
-func DeleteOneTeacherHandler(w http.ResponseWriter , r *http.Request){
+func DeleteOneStudentHandler(w http.ResponseWriter , r *http.Request){
 	idStr := strings.TrimPrefix(r.URL.Path, "/teacher/")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
