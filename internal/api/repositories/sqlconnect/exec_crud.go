@@ -16,7 +16,7 @@ import (
 	"github.com/everestp/rest_api_go/internal/api/models"
 	"github.com/everestp/rest_api_go/pkg/utils"
 	"github.com/go-mail/mail"
-	"github.com/go-mail/mail/v2"
+	
 )
 
 func GetExecsDbHandler(execs []models.Exec, r *http.Request) ([]models.Exec, error) {
