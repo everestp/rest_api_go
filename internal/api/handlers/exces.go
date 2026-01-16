@@ -300,6 +300,8 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"message": "Logged out succesfully"}`))
 }
 
+
+
 func UpdatePasswordHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	userId, err := strconv.Atoi(idStr)

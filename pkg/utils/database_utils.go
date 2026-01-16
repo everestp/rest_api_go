@@ -14,6 +14,8 @@ func GenerateInsertQuery(tableName string, model interface{}) string {
 	for i := 0; i < modelType.NumField(); i++ {
 		dbTag := modelType.Field(i).Tag.Get("db")
 		fmt.Println("dbTag:", dbTag)
+	
+	
 		dbTag = strings.TrimSuffix(dbTag, ",omitempty")
 		if dbTag != "" && dbTag != "id" { // skip the ID field if it's auto increment
 			if columns != "" {
