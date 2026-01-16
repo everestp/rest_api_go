@@ -26,3 +26,4 @@ type UpdatePasswordResponse struct {
 	Token           string `json:"token"`
 	PasswordUpdated bool   `json:"password_updated"`
 }
+
