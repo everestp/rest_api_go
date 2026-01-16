@@ -41,9 +41,11 @@ func main() {
 	 }
 	 fmt.Println(rl ,hppOptions)
 	// Logic Block: Middleware Onion
+
+	jwtMiddleware := mw.MiddlewaresExcludePaths(mw.JWTMiddleware , "execs/login")
 	// The order remains the same: Timing -> Compression -> Security -> CORS -> App
 	// secureMux1 := applyMiddlewares(mux, mw.Hpp(hppOptions) ,mw.Compression , mw.SecurityHeaders , mw.ResponseTimeMiddleware , rl.Middleware ,mw.Cors)
-   secureMux := mw.SecurityHeaders(router.MainRouter())
+   secureMux := jwtMiddleware(mw.SecurityHeaders(router.MainRouter()))
 	// Logic Block: Server Initialization
 	// We removed the TLSConfig field.
 	server := &http.Server{
